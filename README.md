@@ -16,15 +16,15 @@ You will then perform sentence classification on ``sst`` dataset and ``cfimdb`` 
 ```
 mkdir -p ANDREWID
 
-python3 classifier.py --option [pretrain/finetune] --epochs NUM_EPOCHS --lr_pretrain LR_FOR_PRETRAINING --lr_finetune LR_FOR_FINETUNING --seed RANDOM_SEED
+python3 classifier.py --option [pretrain/finetune] --epochs NUM_EPOCHS --lr LR --train data/sst-train.txt --dev data/sst-dev.txt --test data/sst-test.txt
 ```
 ## Reference accuracies: 
 
-Mean reference accuracies over 10 random seeds with their standard deviation shown in brackets.
-
 Pretraining for SST:
-Dev Accuracy   : 0.387 (0.008)
-Test Accuracy  : 0.397 (0.013)
+Dev Accuracy   : 0.400
+Test Accuracy  : 0.414
+
+Mean reference accuracies over 10 random seeds with their standard deviation shown in brackets.
 
 Finetuning for SST :
 Dev Accuracy   : 0.520 (0.006)

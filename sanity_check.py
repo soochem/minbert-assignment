@@ -11,5 +11,5 @@ att_mask = torch.tensor([[1, 1, 1, 1, 0, 0, 0, 0],[1, 1, 1, 1, 1, 1, 1, 1]])
 bert = BertModel.from_pretrained('bert-base-uncased')
 outputs = bert(sent_ids, att_mask)
 for k in ['last_hidden_state', 'pooler_output']:
-    assert torch.allclose(outputs[k], sanity_data[k], rtol=1e-3)
+    assert torch.allclose(outputs[k], sanity_data[k], atol=1e-4, rtol=0)
 
