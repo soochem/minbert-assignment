@@ -13,6 +13,9 @@ from bert import BertModel
 from torch.optim import AdamW
 import pickle
 
+import wandb  # show training curve
+wandb.init(project="minbert-assignment")
+
 # fix the random seed
 def seed_everything(seed=11747):
 	random.seed(seed)
@@ -27,12 +30,20 @@ def seed_everything(seed=11747):
 class BertSentClassifier(torch.nn.Module):
 	def __init__(self, config):
 		super(BertSentClassifier, self).__init__()
-		pass
-
+		self.config = config
+		# from our model?
+		self.bert = BertModel.from_pretrained('bert-base-uncased')
+		self.dropout = torch.nn.Dropout(config.hidden_dropout_prob) # which dropout?
+		self.ln_layer = torch.nn.Linear(config.hidden_size, config.num_labels)
+		
 	def forward(self, input_ids, token_type_ids, attention_mask): 
-		# 
-		pass
-
+		# encode the sentences using BERT to obtain the pooled output representation of the sentence.
+		pooled_output = self.bert(input_ids = input_ids, attention_mask = attention_mask)['pooler_output']
+		# classify the sentence by applying dropout to the pooled-output and project it using a linear layer.
+		pooled_output = self.dropout(pooled_output)
+		pooled_output = self.ln_layer(pooled_output)
+		# adjust the model paramters depending on whether we are pre-training or fine-tuning BERT
+		return F.log_softmax(pooled_output, dim=-1)
 
 class PretrainedBert(torch.nn.Module):
 	def __init__(self, config, pretrained_weights):
@@ -184,6 +195,7 @@ def model_eval(dataloader, model, args, save_file=None):
 
 if __name__ == "__main__":
 	args = get_args()
+	wandb.config.update(args)
 
 	seed_everything(args.seed)	# fix the seed for reproducibility
 
@@ -209,7 +221,8 @@ if __name__ == "__main__":
 
 		# initialize the Senetence Classification Model
 		model 						 	= BertSentClassifier(config)
-
+		wandb.watch(model)
+		
 		print("Loading Done")
 
 		use_cuda	 					= False
@@ -252,6 +265,7 @@ if __name__ == "__main__":
 				optimizer.step()
 
 				train_loss 		+= 	loss.item()
+				# wandb.log({"Train Loss": loss.item()})
 				num_batches		+= 	1
 
 			train_loss 			= 	train_loss/(num_batches)
@@ -265,6 +279,12 @@ if __name__ == "__main__":
 				best_model 	 	=	model
 				torch.save(best_model, filepath)
 
+			wandb.log({"Train Loss": loss.item(),
+						"Train Acc": train_acc,
+						"Train F1": train_f1,
+						"Dev Acc": dev_acc,
+						"Dev F1": dev_f1,
+					})
 			print(f"Epoch {epoch} \t Train loss :: {round(train_loss, 3)} \t Train Acc :: {round(train_acc,3)} \t Dev Acc :: {round(dev_acc, 3)}")
 
 		model 					= 	torch.load(filepath)
@@ -272,8 +292,10 @@ if __name__ == "__main__":
 	elif args.option == 'pretrain':
 		with open('weights.pkl','rb') as handle:
 			weights = pickle.load(handle)	
-		model 					=	PretrainedBert(config, weights)	
-
+		model 					=	PretrainedBert(config, weights)
+		
+	else:
+		raise("Use pretrain or finetune mode!")
 
 
 	dev_acc, dev_f1			= model_eval(dev_dataloader, 		model,	args, save_file=args.dev_out)
